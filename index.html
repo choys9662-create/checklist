@@ -120,7 +120,10 @@ function resize() {
   H = canvas.height = window.innerHeight;
   centerX = W / 2;
   centerY = H / 2;
-  radius = Math.min(W, H) * 0.45;
+  const isNarrow = W < 700;
+  const legendHeight = isNarrow ? 60 : 0;
+  centerY = (H - legendHeight) / 2;
+  radius = Math.min(W, H - legendHeight) * 0.38;
 }
 resize();
 window.addEventListener("resize", () => { resize(); initNodes(); });
