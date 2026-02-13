@@ -112,7 +112,21 @@ const colors = [
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const tooltip = document.getElementById("tooltip");
-let W, H, centerX, centerY, radius;
+let W, H, centerX, centerY, radius, simSize, simLeft, simTop, DPR;
+
+function getSimulationConfig() {
+  return {
+    nodeSpreadMin: 0.45,
+    nodeSpreadMax: 0.98,
+    repelDistance: 34,
+    repelStrength: 0.024,
+    centerPull: 0.00012,
+    edgePush: 0.024,
+    linkTargetDistance: 76,
+    linkForceScale: 0.00009,
+    damping: 0.87,
+  };
+}
 
 function getSimulationConfig() {
   const isMobile = W <= 700;
@@ -132,11 +146,21 @@ function getSimulationConfig() {
 
 
 function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  centerX = W / 2;
-  centerY = H / 2;
-  radius = Math.min(W, H) * 0.45;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  DPR = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  simSize = Math.min(W, H);
+  simLeft = (W - simSize) / 2;
+  simTop = (H - simSize) / 2;
+  centerX = simLeft + simSize / 2;
+  centerY = simTop + simSize / 2;
+  radius = simSize * 0.45;
 }
 resize();
 window.addEventListener("resize", () => { resize(); initNodes(); });
@@ -318,6 +342,11 @@ canvas.addEventListener("mouseleave", () => {
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
+
+  ctx.globalAlpha = 0.08;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(simLeft, simTop, simSize, simSize);
 
   const dimming = highlightGroup >= 0;
 
