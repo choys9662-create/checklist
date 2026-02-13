@@ -112,15 +112,39 @@ const colors = [
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const tooltip = document.getElementById("tooltip");
-let W, H, centerX, centerY, radius;
+let W, H, centerX, centerY, radius, simSize, simLeft, simTop, DPR;
+
+function getSimulationConfig() {
+  return {
+    nodeSpreadMin: 0.45,
+    nodeSpreadMax: 0.98,
+    repelDistance: 34,
+    repelStrength: 0.024,
+    centerPull: 0.00012,
+    edgePush: 0.024,
+    linkTargetDistance: 76,
+    linkForceScale: 0.00009,
+    damping: 0.87,
+  };
+}
 
 
 function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  centerX = W / 2;
-  centerY = H / 2;
-  radius = Math.min(W, H) * 0.45;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  DPR = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  simSize = Math.min(W, H);
+  simLeft = (W - simSize) / 2;
+  simTop = (H - simSize) / 2;
+  centerX = simLeft + simSize / 2;
+  centerY = simTop + simSize / 2;
+  radius = simSize * 0.45;
 }
 resize();
 window.addEventListener("resize", () => { resize(); initNodes(); });
@@ -132,6 +156,7 @@ let links = [];
 function initNodes() {
   nodes = [];
   links = [];
+  const config = getSimulationConfig();
 
   const totalNodes = data.reduce((s, d) => s + d.count, 0);
   document.getElementById("totalCount").textContent = totalNodes;
@@ -142,7 +167,7 @@ function initNodes() {
 
     for (let i = 0; i < group.count; i++) {
       const angle = Math.PI * 2 * Math.random();
-      const r = radius * (0.3 + Math.random() * 0.7);
+      const r = radius * (config.nodeSpreadMin + Math.random() * (config.nodeSpreadMax - config.nodeSpreadMin));
       const node = {
         x: centerX + Math.cos(angle) * r,
         y: centerY + Math.sin(angle) * r,
@@ -187,6 +212,7 @@ initNodes();
 
 // Force simulation
 function simulate() {
+  const config = getSimulationConfig();
   const cellSize = 40;
   const grid = {};
   nodes.forEach(n => {
@@ -209,8 +235,8 @@ function simulate() {
           const ddx = n.x - other.x;
           const ddy = n.y - other.y;
           const dist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
-          if (dist < 30) {
-            const force = (30 - dist) * 0.02;
+          if (dist < config.repelDistance) {
+            const force = (config.repelDistance - dist) * config.repelStrength;
             n.vx += (ddx / dist) * force;
             n.vy += (ddy / dist) * force;
           }
@@ -225,11 +251,11 @@ function simulate() {
     const dy = n.y - centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > radius) {
-      n.vx -= dx * 0.02;
-      n.vy -= dy * 0.02;
+      n.vx -= dx * config.edgePush;
+      n.vy -= dy * config.edgePush;
     }
-    n.vx += (centerX - n.x) * 0.0002;
-    n.vy += (centerY - n.y) * 0.0002;
+    n.vx += (centerX - n.x) * config.centerPull;
+    n.vy += (centerY - n.y) * config.centerPull;
   });
 
   links.forEach(l => {
@@ -237,8 +263,8 @@ function simulate() {
     const dx = l.target.x - l.source.x;
     const dy = l.target.y - l.source.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    if (dist > 80) {
-      const force = (dist - 80) * 0.0001;
+    if (dist > config.linkTargetDistance) {
+      const force = (dist - config.linkTargetDistance) * config.linkForceScale;
       const fx = dx / dist * force;
       const fy = dy / dist * force;
       l.source.vx += fx;
@@ -250,8 +276,8 @@ function simulate() {
 
   nodes.forEach(n => {
 
-    n.vx *= 0.85;
-    n.vy *= 0.85;
+    n.vx *= config.damping;
+    n.vy *= config.damping;
     n.x += n.vx;
     n.y += n.vy;
   });
@@ -300,6 +326,11 @@ canvas.addEventListener("mouseleave", () => {
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
+
+  ctx.globalAlpha = 0.08;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(simLeft, simTop, simSize, simSize);
 
   const dimming = highlightGroup >= 0;
 
