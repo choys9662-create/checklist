@@ -191,7 +191,7 @@ let zoom = 1;
 let rotX = -0.32;            // pitch (vertical drag)
 let rotY = 0;               // yaw (auto-rotating)
 const AUTO_ROT_SPEED = 0.0018;
-const FOCAL = 2.6;          // perspective focal length (x radius)
+const FOCAL = 3.0;          // perspective focal length (x radius)
 
 function updateNodeVisualScale() {
   if (!nodes.length) return;
@@ -234,7 +234,7 @@ function resize() {
   layoutScale = Math.max(0.42, Math.min(1, side / BASE_LAYOUT_SIDE));
   centerX = W / 2;
   centerY = H / 2;
-  radius = Math.min(W, H) * (0.45 + (1 - layoutScale) * 0.04);
+  radius = Math.min(W, H) * (0.46 + (1 - layoutScale) * 0.04);
 
   if (nodes.length && prevRadius > 0) {
     const ratio = radius / prevRadius;
@@ -274,7 +274,7 @@ function initNodes() {
     for (let i = 0; i < group.count; i++) {
       const theta = Math.PI * 2 * Math.random();
       const phi = Math.acos(2 * Math.random() - 1);
-      const r = radius * Math.cbrt(Math.random()) * 0.95;
+      const r = radius * (0.8 + 0.2 * Math.random());
       const sinPhi = Math.sin(phi);
       const baseRadius = group.count > 100 ? 2.5 : (group.count > 30 ? 3 : 3.5);
       const node = {
@@ -363,16 +363,13 @@ function simulate() {
 
   nodes.forEach(n => {
     const dist = Math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z) || 1;
-    const overflow = dist - radius;
-    if (overflow > 0) {
-      const pull = Math.min(overflow * 0.01, 0.6);
-      n.vx -= (n.x / dist) * pull;
-      n.vy -= (n.y / dist) * pull;
-      n.vz -= (n.z / dist) * pull;
-    }
-    n.vx -= n.x * 0.00012;
-    n.vy -= n.y * 0.00012;
-    n.vz -= n.z * 0.00012;
+    const targetR = radius * 0.92;
+    const diff = dist - targetR;
+    // pull nodes onto the spherical shell (firmer from outside, softer from inside)
+    const k = diff > 0 ? 0.02 : 0.006;
+    n.vx -= (n.x / dist) * diff * k;
+    n.vy -= (n.y / dist) * diff * k;
+    n.vz -= (n.z / dist) * diff * k;
   });
 
   links.forEach(l => {
