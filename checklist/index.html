@@ -358,10 +358,12 @@ function simulate() {
     if (n.dragging) return;
     const dx = n.x - centerX;
     const dy = n.y - centerY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > radius) {
-      n.vx -= dx * 0.006;
-      n.vy -= dy * 0.006;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const overflow = dist - radius;
+    if (overflow > 0) {
+      const pull = Math.min(overflow * 0.01, 0.6);
+      n.vx -= (dx / dist) * pull;
+      n.vy -= (dy / dist) * pull;
     }
     n.vx += (centerX - n.x) * 0.00012;
     n.vy += (centerY - n.y) * 0.00012;
